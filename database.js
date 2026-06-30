@@ -262,7 +262,7 @@ class KoperasiDB {
         // Jangan hapus akun yang dibuat secara manual (misal Anggota Kopsis)
         // Kita hanya mengupdate data akun bawaan jika ada perubahan role
 
-        // Tambahkan akun yang belum ada di database, dan update role yang berubah
+        // Tambahkan akun yang belum ada di database, dan update role dan nama yang berubah
         DEFAULT_DATA.users.forEach(reqUser => {
             const existingUserIndex = data.users.findIndex(u => u.username === reqUser.username);
             if (existingUserIndex === -1) {
@@ -272,6 +272,11 @@ class KoperasiDB {
                 // Update role if changed
                 if (data.users[existingUserIndex].role !== reqUser.role) {
                     data.users[existingUserIndex].role = reqUser.role;
+                    changed = true;
+                }
+                // Update name if changed
+                if (data.users[existingUserIndex].name !== reqUser.name) {
+                    data.users[existingUserIndex].name = reqUser.name;
                     changed = true;
                 }
             }
