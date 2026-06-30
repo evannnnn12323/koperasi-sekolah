@@ -13,6 +13,16 @@ let state = {
 // Auto-Logout Inactivity limit (30 minutes)
 const INACTIVITY_LIMIT = 30 * 60 * 1000; // 30 minutes in ms
 
+function safeCreateIcons() {
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        try {
+            window.lucide.createIcons();
+        } catch (e) {
+            console.error("Lucide icons error:", e);
+        }
+    }
+}
+
 // DOM Elements
 const views = {
     login: document.getElementById('view-login'),
@@ -37,7 +47,7 @@ function showToast(message, type = 'success') {
     `;
     
     container.appendChild(toast);
-    lucide.createIcons();
+    safeCreateIcons();
 
     // Remove toast after 3 seconds
     setTimeout(() => {
@@ -80,7 +90,7 @@ function updateClock() {
     if (siswaClock) siswaClock.innerHTML = `<i data-lucide="clock" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;"></i> ${dateStr} | ${timeStr}`;
     
     // Quick Lucide refresh if clock elements re-rendered
-    if (adminClock || siswaClock) lucide.createIcons();
+    if (adminClock || siswaClock) safeCreateIcons();
 }
 setInterval(updateClock, 1000);
 updateClock();
@@ -389,7 +399,7 @@ function renderAttendanceApprovals() {
         `;
     }).join('');
     
-    lucide.createIcons();
+    safeCreateIcons();
 }
 
 window.approvePaRequest = function(requestId) {
@@ -435,7 +445,7 @@ function renderUsersTab() {
             </td>
         </tr>
     `).join('');
-    lucide.createIcons();
+    safeCreateIcons();
 }
 
 window.openAddUserModal = function() {
@@ -573,7 +583,7 @@ function renderStudentsTab() {
             </td>
         </tr>
     `).join('');
-    lucide.createIcons();
+    safeCreateIcons();
 }
 
 window.openAddStudentModal = function() {
@@ -773,7 +783,7 @@ function renderProductsTab() {
             </td>
         </tr>
     `).join('');
-    lucide.createIcons();
+    safeCreateIcons();
 }
 
 window.openAddProductModal = function() {
@@ -1094,7 +1104,7 @@ function updateCartUI() {
         `;
     }).join('');
 
-    lucide.createIcons();
+    safeCreateIcons();
     document.getElementById('pos-cart-subtotal').textContent = `Rp ${subtotal.toLocaleString('id-ID')}`;
     document.getElementById('pos-cart-total').textContent = `Rp ${subtotal.toLocaleString('id-ID')}`;
 }
@@ -1218,6 +1228,11 @@ function renderReportsTab() {
 
     // Render manual daily adjustments table
     renderAdjustmentsTable();
+
+    if (typeof Chart === 'undefined') {
+        console.warn('Chart.js is not loaded. Skipping chart rendering.');
+        return;
+    }
 
     // Destroy existing charts to recreate
     if (state.charts.salesChart) state.charts.salesChart.destroy();
@@ -1549,7 +1564,7 @@ window.togglePasswordVisibility = function(inputId, btn) {
         input.type = 'password';
         icon.setAttribute('data-lucide', 'eye');
     }
-    lucide.createIcons();
+    safeCreateIcons();
 };
 
 // Handle Forgot Password click
@@ -1568,7 +1583,7 @@ window.toggleDemoInfo = function() {
     if (chevron) {
         chevron.classList.toggle('rotated', !isVisible);
     }
-    lucide.createIcons();
+    safeCreateIcons();
 };
 
 // Fill login form with demo credentials
@@ -1687,7 +1702,7 @@ function renderConsignmentList() {
             </tr>
         `;
     }).join('');
-    lucide.createIcons();
+    safeCreateIcons();
 }
 
 function renderConsignmentSales() {
@@ -1764,7 +1779,7 @@ function renderConsignmentPayouts() {
                 </tr>
             `;
         }).join('');
-        lucide.createIcons();
+        safeCreateIcons();
     }
 
     // Render payout history
@@ -2038,7 +2053,7 @@ function renderAdjustmentsTable() {
             </tr>
         `;
     }).join('');
-    lucide.createIcons();
+    safeCreateIcons();
 }
 
 // ================= ABSENSI PETUGAS KOPSIS & TANDA TANGAN =================
@@ -2150,7 +2165,7 @@ window.renderPetugasAttendanceTab = function() {
     renderPetugasSalaryReport();
     
     // Jalankan lucide untuk ikon di banner baru
-    lucide.createIcons();
+    safeCreateIcons();
 };
 
 window.loadPetugasAttendanceForm = function() {
@@ -2271,7 +2286,7 @@ window.loadPetugasAttendanceForm = function() {
         `;
     }).join('');
 
-    lucide.createIcons();
+    safeCreateIcons();
 };
 
 window.handlePaStatusChange = function(selectEl, username) {
@@ -2325,7 +2340,7 @@ window.handlePaStatusChange = function(selectEl, username) {
         actionCell.textContent = '-';
         delete tempSignatures[username];
     }
-    lucide.createIcons();
+    safeCreateIcons();
 };
 
 function getSavedSignatureForDate(username) {
@@ -2348,7 +2363,7 @@ window.clearRowSignature = function(username) {
             </button>
         `;
         actionCell.textContent = '-';
-        lucide.createIcons();
+        safeCreateIcons();
     }
 };
 
