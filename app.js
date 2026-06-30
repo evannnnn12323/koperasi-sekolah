@@ -20,6 +20,30 @@ function getLocalDateString() {
     return localDate.toISOString().slice(0, 10);
 }
 
+// Auto-update date check every 10 seconds to detect day rollover
+let currentLocalDateString = getLocalDateString();
+setInterval(() => {
+    const freshDate = getLocalDateString();
+    if (freshDate !== currentLocalDateString) {
+        currentLocalDateString = freshDate;
+        console.log('Date rolled over to:', freshDate);
+        if (state.currentUser) {
+            if (state.activeView === 'admin') {
+                if (state.activeTab === 'attendance') {
+                    renderAttendanceTab();
+                } else if (state.activeTab === 'dashboard') {
+                    renderAdminDashboard();
+                }
+            } else if (state.activeView === 'siswa') {
+                if (state.activeTab === 'attendance') {
+                    renderSiswaAttendance();
+                }
+            }
+        }
+    }
+}, 10000);
+
+
 function safeCreateIcons() {
     if (window.lucide && typeof window.lucide.createIcons === 'function') {
         try {
