@@ -13,6 +13,13 @@ let state = {
 // Auto-Logout Inactivity limit (30 minutes)
 const INACTIVITY_LIMIT = 30 * 60 * 1000; // 30 minutes in ms
 
+function getLocalDateString() {
+    const d = new Date();
+    const offset = d.getTimezoneOffset();
+    const localDate = new Date(d.getTime() - (offset * 60 * 1000));
+    return localDate.toISOString().slice(0, 10);
+}
+
 function safeCreateIcons() {
     if (window.lucide && typeof window.lucide.createIcons === 'function') {
         try {
@@ -314,8 +321,14 @@ function renderAdminDashboard() {
     const logs = window.db.getAuditLogs();
     
     // Calculate stats
-    const today = new Date().toISOString().slice(0, 10);
-    const todayTxs = txs.filter(t => t.date.startsWith(today));
+    const todayLocal = getLocalDateString();
+    const todayTxs = txs.filter(t => {
+        try {
+            return new Date(t.date).toLocaleDateString('en-CA') === todayLocal;
+        } catch (e) {
+            return false;
+        }
+    });
     const todaySales = todayTxs.reduce((sum, t) => sum + t.totalAmount, 0);
     
     document.getElementById('stat-sales-today').textContent = `Rp ${todaySales.toLocaleString('id-ID')}`;
@@ -692,7 +705,7 @@ window.deleteStudentData = function(id) {
 
 // 4. ATTENDANCE MANAGEMENT TAB
 function renderAttendanceTab() {
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = getLocalDateString();
     const isAdmin = state.currentUser && state.currentUser.role === 'admin';
 
     const adminDateDiv   = document.getElementById('attendance-date-admin');
@@ -747,7 +760,7 @@ function updateSchoolDayStatusBar(date) {
 
 window.setSchoolDayStatus = function(status) {
     const dateInput = document.getElementById('attendance-date-picker');
-    const date = dateInput ? dateInput.value : new Date().toISOString().slice(0, 10);
+    const date = dateInput ? dateInput.value : getLocalDateString();
     const reason = (document.getElementById('school-day-reason-input') || {}).value || '';
     if (!date) { showToast('Pilih tanggal terlebih dahulu.', 'error'); return; }
     window.db.setDayStatus(date, status, reason);
