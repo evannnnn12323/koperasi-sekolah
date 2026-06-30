@@ -229,7 +229,8 @@ const DEFAULT_DATA = {
     ],
     petugasAttendance: [],
     petugasAttendanceRequests: [],
-    schoolCalendar: []
+    schoolCalendar: [],
+    consignmentRequests: []
 };
 
 // Gaji per pertemuan (bisa diubah admin)
@@ -261,6 +262,10 @@ class KoperasiDB {
         }
         if (!data.schoolCalendar) {
             data.schoolCalendar = [];
+            changed = true;
+        }
+        if (!data.consignmentRequests) {
+            data.consignmentRequests = [];
             changed = true;
         }
 
@@ -818,6 +823,71 @@ class KoperasiDB {
         this.saveData(data);
         this.addAuditLog("Yanuar", "admin", "Bayar Bagi Hasil Siswa", `Menyerahkan uang bagi hasil ke ${name} sebesar Rp ${parseInt(amount).toLocaleString('id-ID')}`);
         return { success: true, payout: newPayout };
+    }
+
+    getConsignmentRequests() {
+        const data = this.getData();
+        if (!data.consignmentRequests) data.consignmentRequests = [];
+        // Sort newest first
+        return data.consignmentRequests.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+    }
+
+    addConsignmentRequest(reqObj) {
+        const data = this.getData();
+        if (!data.consignmentRequests) data.consignmentRequests = [];
+        
+        const reqId = "REQ-CON-" + String(data.consignmentRequests.length + 1).padStart(3, '0');
+        reqObj.id = reqId;
+        reqObj.date = new Date().toISOString();
+        reqObj.status = "Pending"; // Pending, Approved, Rejected
+        
+        data.consignmentRequests.push(reqObj);
+        this.saveData(data);
+        this.addAuditLog(reqObj.studentName, "siswa", "Pengajuan Titipan", `Mengajukan titipan barang: ${reqObj.productName} sebanyak ${reqObj.consignedQty} unit`);
+        return { success: true, request: reqObj };
+    }
+
+    approveConsignmentRequest(requestId, approvedSellingPrice) {
+        const data = this.getData();
+        if (!data.consignmentRequests) data.consignmentRequests = [];
+        
+        const idx = data.consignmentRequests.findIndex(r => r.id === requestId);
+        if (idx === -1) return { success: false, message: "Pengajuan tidak ditemukan." };
+        
+        const req = data.consignmentRequests[idx];
+        req.status = "Approved";
+        
+        // Add to actual consignments (using addConsignment)
+        const res = this.addConsignment({
+            studentId: req.studentId,
+            studentName: req.studentName,
+            productName: req.productName,
+            category: req.category,
+            costPrice: req.costPrice,
+            sellingPrice: approvedSellingPrice,
+            consignedQty: req.consignedQty,
+            consignmentDate: new Date().toISOString()
+        });
+        
+        this.saveData(data);
+        this.addAuditLog("Yanuar", "admin", "Setujui Titipan", `Menyetujui titipan barang: ${req.productName} dari ${req.studentName}`);
+        return { success: true, consignment: res.consignment };
+    }
+
+    rejectConsignmentRequest(requestId, reason = '') {
+        const data = this.getData();
+        if (!data.consignmentRequests) data.consignmentRequests = [];
+        
+        const idx = data.consignmentRequests.findIndex(r => r.id === requestId);
+        if (idx === -1) return { success: false, message: "Pengajuan tidak ditemukan." };
+        
+        const req = data.consignmentRequests[idx];
+        req.status = "Rejected";
+        req.rejectReason = reason;
+        
+        this.saveData(data);
+        this.addAuditLog("Yanuar", "admin", "Tolak Titipan", `Menolak titipan barang: ${req.productName} dari ${req.studentName} karena: ${reason}`);
+        return { success: true };
     }
 
     // ============================================================

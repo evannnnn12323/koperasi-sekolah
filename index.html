@@ -403,6 +403,7 @@
                     <button class="sec-tab-btn active" onclick="switchConsignmentSubTab('list')">Daftar Titipan</button>
                     <button class="sec-tab-btn" onclick="switchConsignmentSubTab('sales')">Riwayat Penjualan</button>
                     <button class="sec-tab-btn" onclick="switchConsignmentSubTab('payouts')">Bagi Hasil & Payout</button>
+                    <button class="sec-tab-btn" id="btn-tab-cons-requests" onclick="switchConsignmentSubTab('requests')">Pengajuan Siswa <span id="cons-requests-badge" class="badge absent" style="display:none; padding:0.1rem 0.4rem; border-radius:50%; font-size:0.7rem; margin-left:0.25rem;">0</span></button>
                 </div>
 
                 <!-- Sub-tab 1: Daftar Barang Titipan -->
@@ -497,6 +498,30 @@
                                 </table>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Sub-tab 4: Pengajuan Siswa -->
+                <div id="cons-subtab-requests" class="cons-subtab-content">
+                    <div class="table-responsive">
+                        <table class="custom-table">
+                            <thead>
+                                <tr>
+                                    <th>Tanggal Pengajuan</th>
+                                    <th>Siswa Penitip</th>
+                                    <th>Nama Barang</th>
+                                    <th>Kategori</th>
+                                    <th>Jumlah Unit</th>
+                                    <th>Bagian Siswa</th>
+                                    <th>Catatan Siswa</th>
+                                    <th>Status</th>
+                                    <th>Aksi Persetujuan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cons-requests-table-body">
+                                <!-- Consignment Requests Rows -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -996,9 +1021,12 @@
 
             <!-- SUB-PAGE: SISWA CONSIGNMENT -->
             <div id="siswa-page-consignment" class="dashboard-page">
-                <div style="border-bottom:1.5px solid var(--gray-100); padding-bottom: 0.75rem; margin-bottom:1.5rem;">
-                    <h2 style="font-weight:700;">Barang Titipan Saya</h2>
-                    <p style="color:var(--gray-500); font-size:0.9rem;">Pantau status penjualan barang yang Anda titipkan jualan di Koperasi THHK secara real-time.</p>
+                <div class="card-header-flex" style="margin-bottom: 1.5rem; border-bottom: 1.5px solid var(--gray-100); padding-bottom: 0.75rem;">
+                    <div>
+                        <h2 style="font-weight:700; margin-bottom: 0px;">Barang Titipan Saya</h2>
+                        <p style="color:var(--gray-500); font-size:0.9rem; margin-bottom: 0px;">Pantau status penjualan barang yang Anda titipkan jualan di Koperasi THHK secara real-time.</p>
+                    </div>
+                    <button class="btn-primary" onclick="openAddSiswaConsignmentModal()"><i data-lucide="plus"></i> Ajukan Titip Barang Jualan</button>
                 </div>
 
                 <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 1.5rem;">
@@ -1070,6 +1098,29 @@
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Siswa Consignment Requests Table -->
+                <div class="dashboard-column-card" style="margin-top: 1.5rem;">
+                    <h3 style="font-size:1.05rem; font-weight:700; border-bottom:1px solid var(--gray-100); padding-bottom:0.5rem; margin-bottom:1rem;">Status Pengajuan Barang Titipan Anda</h3>
+                    <div class="table-responsive">
+                        <table class="custom-table">
+                            <thead>
+                                <tr>
+                                    <th>Tanggal Pengajuan</th>
+                                    <th>Nama Barang</th>
+                                    <th>Kategori</th>
+                                    <th>Bagian Siswa</th>
+                                    <th>Jumlah Dititip</th>
+                                    <th>Status</th>
+                                    <th>Keterangan / Catatan Admin</th>
+                                </tr>
+                            </thead>
+                            <tbody id="siswa-cons-requests-body">
+                                <!-- Student consignment requests -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -1421,6 +1472,100 @@
             </div>
         </div>
     </div>
+
+    <!-- MODAL: SISWA ADD CONSIGNMENT REQUEST -->
+    <div id="modal-siswa-consignment" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <span>Ajukan Titipan Barang Baru</span>
+                <button class="btn-modal-close" onclick="closeModal('modal-siswa-consignment')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" for="siswa-cons-prod-name">Nama Barang</label>
+                    <input type="text" id="siswa-cons-prod-name" class="form-input" style="padding-left:1rem;" placeholder="Contoh: Keripik Pisang Keju" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="siswa-cons-category">Kategori</label>
+                    <select id="siswa-cons-category" class="customer-select">
+                        <option value="Makanan" selected>Makanan</option>
+                        <option value="Minuman">Minuman</option>
+                        <option value="Alat Tulis">Alat Tulis</option>
+                        <option value="Atribut">Atribut</option>
+                        <option value="Lainnya">Lainnya</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="siswa-cons-cost-price">Harga Pemilik / Bagian Uang Siswa (Rp)</label>
+                    <input type="number" id="siswa-cons-cost-price" class="form-input" style="padding-left:1rem;" placeholder="Berapa uang yang Anda terima per unit terjual. Contoh: 3000" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="siswa-cons-qty">Jumlah Unit yang Dititipkan</label>
+                    <input type="number" id="siswa-cons-qty" class="form-input" style="padding-left:1rem;" placeholder="Contoh: 20" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="siswa-cons-notes">Catatan Tambahan (Opsional)</label>
+                    <textarea id="siswa-cons-notes" class="form-input" style="padding:0.5rem 1rem; height:80px;" placeholder="Tulis deskripsi singkat barang Anda atau catatan lainnya..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('modal-siswa-consignment')">Batal</button>
+                <button class="btn-primary" onclick="saveSiswaConsignmentForm()"><i data-lucide="send"></i> Kirim Pengajuan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ADMIN CONFIRM APPROVE CONSIGNMENT -->
+    <div id="modal-admin-approve-consignment" class="modal-overlay">
+        <div class="modal-box" style="max-width: 400px;">
+            <div class="modal-header">
+                <span>Setujui Titipan Barang</span>
+                <button class="btn-modal-close" onclick="closeModal('modal-admin-approve-consignment')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="approve-req-id">
+                <div class="form-group">
+                    <label class="form-label">Nama Barang</label>
+                    <input type="text" id="approve-req-name" class="form-input" style="padding-left:1rem; background:var(--gray-100);" disabled>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Harga Pemilik (Bagian Siswa)</label>
+                    <input type="text" id="approve-req-cost" class="form-input" style="padding-left:1rem; background:var(--gray-100);" disabled>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="approve-selling-price">Harga Jual ke Pembeli (Rp)</label>
+                    <input type="number" id="approve-selling-price" class="form-input" style="padding-left:1rem;" placeholder="Tentukan harga jual di koperasi" required>
+                    <span style="font-size:0.78rem; color:var(--gray-500); display:block; margin-top:0.25rem;">Koperasi disarankan mengambil untung (markup), misal: Rp 3.500 jika harga pemilik Rp 3.000.</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('modal-admin-approve-consignment')">Batal</button>
+                <button class="btn-primary" onclick="submitApproveConsignmentRequest()">Setujui & Daftarkan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ADMIN REJECT CONSIGNMENT -->
+    <div id="modal-admin-reject-consignment" class="modal-overlay">
+        <div class="modal-box" style="max-width: 400px;">
+            <div class="modal-header">
+                <span>Tolak Titipan Barang</span>
+                <button class="btn-modal-close" onclick="closeModal('modal-admin-reject-consignment')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="reject-req-id">
+                <div class="form-group">
+                    <label class="form-label" for="reject-reason">Alasan Penolakan</label>
+                    <input type="text" id="reject-reason" class="form-input" style="padding-left:1rem;" placeholder="Contoh: Stok barang di koperasi sedang penuh" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('modal-admin-reject-consignment')">Batal</button>
+                <button class="btn-danger" onclick="submitRejectConsignmentRequest()">Tolak Pengajuan</button>
+            </div>
+        </div>
+    </div>
+
 
     <!-- MODAL: EXECUTE STUDENT PAYOUT -->
     <div id="modal-payout" class="modal-overlay">

@@ -1781,10 +1781,25 @@ window.switchConsignmentSubTab = function(subTabName) {
     } else if (subTabName === 'payouts') {
         document.getElementById('cons-subtab-payouts').classList.add('active');
         renderConsignmentPayouts();
+    } else if (subTabName === 'requests') {
+        document.getElementById('cons-subtab-requests').classList.add('active');
+        renderConsignmentRequestsAdmin();
     }
 };
 
 window.renderConsignmentTab = function() {
+    // Update badge count
+    const reqs = window.db.getConsignmentRequests();
+    const pendingCount = reqs.filter(r => r.status === 'Pending').length;
+    const badge = document.getElementById('cons-requests-badge');
+    if (badge) {
+        if (pendingCount > 0) {
+            badge.textContent = pendingCount;
+            badge.style.display = 'inline-block';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
     switchConsignmentSubTab(activeConsignmentTab);
 };
 
@@ -2020,6 +2035,179 @@ window.submitStudentPayout = function() {
     }
 };
 
+function renderConsignmentRequestsAdmin() {
+    const reqs = window.db.getConsignmentRequests();
+    const tbody = document.getElementById('cons-requests-table-body');
+    const badge = document.getElementById('cons-requests-badge');
+
+    // Update pending badge count
+    const pendingCount = reqs.filter(r => r.status === 'Pending').length;
+    if (badge) {
+        if (pendingCount > 0) {
+            badge.textContent = pendingCount;
+            badge.style.display = 'inline-block';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+
+    if (reqs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--gray-500);">Belum ada pengajuan titipan barang dari siswa.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = reqs.map(r => {
+        const dateStr = new Date(r.date).toLocaleDateString('id-ID', {
+            day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+        let statusBadge = '';
+        if (r.status === 'Pending') statusBadge = '<span class="badge warning">Menunggu</span>';
+        else if (r.status === 'Approved') statusBadge = '<span class="badge present">Disetujui</span>';
+        else if (r.status === 'Rejected') statusBadge = `<span class="badge absent" title="Alasan: ${r.rejectReason || '-'}">Ditolak</span>`;
+
+        let actionBtns = '';
+        if (r.status === 'Pending') {
+            actionBtns = `
+                <div style="display:flex; gap:0.25rem;">
+                    <button class="btn-success" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="openApproveRequestModal('${r.id}', '${r.productName}', ${r.costPrice})"><i data-lucide="check-circle" style="width:14px;height:14px;"></i> Setuju</button>
+                    <button class="btn-danger" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="openRejectRequestModal('${r.id}')"><i data-lucide="x-circle" style="width:14px;height:14px;"></i> Tolak</button>
+                </div>
+            `;
+        } else {
+            actionBtns = `<span style="font-size:0.78rem; color:var(--gray-400);">Selesai diarsip</span>`;
+        }
+
+        return `
+            <tr>
+                <td><small>${dateStr}</small></td>
+                <td><strong>${r.studentName}</strong> <span style="font-size:0.75rem;color:var(--gray-500);">(${r.studentId})</span></td>
+                <td>${r.productName}</td>
+                <td>${r.category}</td>
+                <td><strong>${r.consignedQty}</strong> unit</td>
+                <td>Rp ${r.costPrice.toLocaleString('id-ID')}</td>
+                <td><small style="display:block; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${r.notes || ''}">${r.notes || '-'}</small></td>
+                <td>${statusBadge}</td>
+                <td>${actionBtns}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    safeCreateIcons();
+}
+
+window.openApproveRequestModal = function(id, name, cost) {
+    const modal = document.getElementById('modal-admin-approve-consignment');
+    document.getElementById('approve-req-id').value = id;
+    document.getElementById('approve-req-name').value = name;
+    document.getElementById('approve-req-cost').value = `Rp ${parseInt(cost).toLocaleString('id-ID')}`;
+    
+    const costNum = parseInt(cost);
+    const suggestedSelling = Math.ceil((costNum * 1.25) / 500) * 500;
+    document.getElementById('approve-selling-price').value = suggestedSelling;
+    
+    modal.classList.add('active');
+};
+
+window.submitApproveConsignmentRequest = function() {
+    const id = document.getElementById('approve-req-id').value;
+    const sellingPrice = parseInt(document.getElementById('approve-selling-price').value);
+    
+    if (!sellingPrice) {
+        showToast("Harga Jual harus diisi!", "error");
+        return;
+    }
+    
+    const req = window.db.getConsignmentRequests().find(r => r.id === id);
+    if (!req) return;
+    
+    if (req.costPrice >= sellingPrice) {
+        showToast("Harga Jual harus lebih besar dari Harga Pemilik siswa!", "error");
+        return;
+    }
+    
+    const res = window.db.approveConsignmentRequest(id, sellingPrice);
+    if (res.success) {
+        showToast("Titipan barang berhasil disetujui!");
+        closeModal('modal-admin-approve-consignment');
+        renderConsignmentTab();
+    } else {
+        showToast(res.message || "Gagal menyetujui.", "error");
+    }
+};
+
+window.openRejectRequestModal = function(id) {
+    const modal = document.getElementById('modal-admin-reject-consignment');
+    document.getElementById('reject-req-id').value = id;
+    document.getElementById('reject-reason').value = '';
+    modal.classList.add('active');
+};
+
+window.submitRejectConsignmentRequest = function() {
+    const id = document.getElementById('reject-req-id').value;
+    const reason = document.getElementById('reject-reason').value.trim();
+    
+    if (!reason) {
+        showToast("Alasan penolakan wajib diisi!", "error");
+        return;
+    }
+    
+    const res = window.db.rejectConsignmentRequest(id, reason);
+    if (res.success) {
+        showToast("Titipan barang telah ditolak.");
+        closeModal('modal-admin-reject-consignment');
+        renderConsignmentTab();
+    } else {
+        showToast(res.message || "Gagal menolak.", "error");
+    }
+};
+
+window.openAddSiswaConsignmentModal = function() {
+    const modal = document.getElementById('modal-siswa-consignment');
+    document.getElementById('siswa-cons-prod-name').value = '';
+    document.getElementById('siswa-cons-cost-price').value = '';
+    document.getElementById('siswa-cons-qty').value = '';
+    document.getElementById('siswa-cons-notes').value = '';
+    modal.classList.add('active');
+};
+
+window.saveSiswaConsignmentForm = function() {
+    const productName = document.getElementById('siswa-cons-prod-name').value.trim();
+    const category = document.getElementById('siswa-cons-category').value;
+    const costPrice = parseInt(document.getElementById('siswa-cons-cost-price').value);
+    const consignedQty = parseInt(document.getElementById('siswa-cons-qty').value);
+    const notes = document.getElementById('siswa-cons-notes').value.trim();
+    
+    if (!productName || !costPrice || !consignedQty) {
+        showToast("Mohon isi semua data yang wajib!", "error");
+        return;
+    }
+    
+    if (costPrice <= 0 || consignedQty <= 0) {
+        showToast("Harga dan jumlah barang harus lebih dari 0!", "error");
+        return;
+    }
+    
+    const user = state.currentUser;
+    const res = window.db.addConsignmentRequest({
+        studentId: user.studentId,
+        studentName: user.name,
+        productName,
+        category,
+        costPrice,
+        consignedQty,
+        notes
+    });
+    
+    if (res.success) {
+        showToast("Pengajuan berhasil dikirim! Menunggu persetujuan admin.");
+        closeModal('modal-siswa-consignment');
+        renderSiswaConsignment();
+    } else {
+        showToast(res.message || "Gagal mengirim pengajuan.", "error");
+    }
+};
+
+
 // ================= SISWA CONSIGNMENT VIEW =================
 window.renderSiswaConsignment = function() {
     const studentId = state.currentUser.studentId;
@@ -2083,6 +2271,39 @@ window.renderSiswaConsignment = function() {
                 <td style="color:var(--success); font-weight:700;">Rp ${s.earnings.toLocaleString('id-ID')}</td>
             </tr>
         `).join('');
+    }
+
+    // Render consignment requests table
+    const reqs = window.db.getConsignmentRequests().filter(r => r.studentId === studentId);
+    const tbodyReqs = document.getElementById('siswa-cons-requests-body');
+    if (reqs.length === 0) {
+        tbodyReqs.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--gray-500);">Belum ada riwayat pengajuan barang titipan.</td></tr>';
+    } else {
+        tbodyReqs.innerHTML = reqs.map(r => {
+            const dateStr = new Date(r.date).toLocaleDateString('id-ID', {
+                day: '2-digit', month: 'short', year: 'numeric'
+            });
+            let statusBadge = '';
+            if (r.status === 'Pending') statusBadge = '<span class="badge warning">Menunggu</span>';
+            else if (r.status === 'Approved') statusBadge = '<span class="badge present">Disetujui</span>';
+            else if (r.status === 'Rejected') statusBadge = '<span class="badge absent">Ditolak</span>';
+            
+            const detailText = r.status === 'Rejected' 
+                ? `<span style="color:var(--danger-dark); font-weight:600;">Ditolak: ${r.rejectReason || '-'}</span>`
+                : (r.notes || '-');
+
+            return `
+                <tr>
+                    <td><small>${dateStr}</small></td>
+                    <td><strong>${r.productName}</strong></td>
+                    <td>${r.category}</td>
+                    <td>Rp ${r.costPrice.toLocaleString('id-ID')}</td>
+                    <td>${r.consignedQty} unit</td>
+                    <td>${statusBadge}</td>
+                    <td><small>${detailText}</small></td>
+                </tr>
+            `;
+        }).join('');
     }
 };
 
