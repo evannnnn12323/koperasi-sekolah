@@ -532,8 +532,18 @@
             <div id="admin-page-attendance" class="dashboard-page">
                 <div class="card-header-flex">
                     <h3>Input Absensi Harian Siswa</h3>
-                    <div class="card-header-actions">
-                        <input type="date" id="attendance-date-picker" class="customer-select" style="width: 180px;" onchange="changeAttendanceDate()">
+                    <div class="card-header-actions" style="align-items:center; flex-wrap:wrap;">
+                        <!-- Admin: date picker editable untuk lihat histori -->
+                        <div id="attendance-date-admin" style="display:none; align-items:center; gap:0.5rem;">
+                            <label style="font-size:0.85rem; color:var(--gray-500); font-weight:600;">Tanggal:</label>
+                            <input type="date" id="attendance-date-picker" class="customer-select" style="width: 180px;" onchange="changeAttendanceDate()">
+                        </div>
+                        <!-- Petugas: tanggal dikunci ke hari ini, tidak bisa diubah -->
+                        <div id="attendance-date-locked" style="display:none; align-items:center; gap:0.5rem;">
+                            <i data-lucide="lock" style="width:16px;height:16px;color:var(--warning);"></i>
+                            <span id="attendance-date-display" style="font-weight:700; font-size:0.95rem; background:var(--gray-100); padding:0.4rem 0.85rem; border-radius:8px; border:2px solid var(--warning); color:var(--dark);"></span>
+                            <span style="font-size:0.78rem; color:var(--warning); font-weight:600;">Tanggal dikunci oleh sistem</span>
+                        </div>
                         <button class="btn-primary" onclick="saveAttendanceData()"><i data-lucide="save"></i> Simpan Absensi</button>
                         <button id="btn-clear-attendance" class="btn-danger" style="display:none;" onclick="clearAttendanceForDateUI()"><i data-lucide="trash-2"></i> Hapus Semua Absensi</button>
                     </div>

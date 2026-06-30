@@ -693,16 +693,33 @@ window.deleteStudentData = function(id) {
 // 4. ATTENDANCE MANAGEMENT TAB
 function renderAttendanceTab() {
     const todayStr = new Date().toISOString().slice(0, 10);
-    const dateInput = document.getElementById('attendance-date-picker');
-    if (!dateInput.value) dateInput.value = todayStr;
+    const isAdmin = state.currentUser && state.currentUser.role === 'admin';
 
-    // Tampilkan tombol hapus hanya untuk admin
-    const clearBtn = document.getElementById('btn-clear-attendance');
-    if (clearBtn) {
-        clearBtn.style.display = (state.currentUser && state.currentUser.role === 'admin') ? 'inline-flex' : 'none';
+    const adminDateDiv  = document.getElementById('attendance-date-admin');
+    const lockedDateDiv = document.getElementById('attendance-date-locked');
+    const dateDisplay   = document.getElementById('attendance-date-display');
+    const dateInput     = document.getElementById('attendance-date-picker');
+    const clearBtn      = document.getElementById('btn-clear-attendance');
+
+    if (isAdmin) {
+        if (adminDateDiv)  adminDateDiv.style.display  = 'flex';
+        if (lockedDateDiv) lockedDateDiv.style.display = 'none';
+        if (clearBtn)      clearBtn.style.display      = 'inline-flex';
+        if (dateInput && !dateInput.value) dateInput.value = todayStr;
+    } else {
+        if (adminDateDiv)  adminDateDiv.style.display  = 'none';
+        if (lockedDateDiv) lockedDateDiv.style.display = 'flex';
+        if (clearBtn)      clearBtn.style.display      = 'none';
+        if (dateInput)     dateInput.value             = todayStr;
+        if (dateDisplay) {
+            const formatted = new Date(todayStr + 'T00:00:00').toLocaleDateString('id-ID', {
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+            });
+            dateDisplay.textContent = formatted;
+        }
     }
 
-    loadAttendanceForDate(dateInput.value);
+    loadAttendanceForDate(isAdmin && dateInput ? dateInput.value : todayStr);
 }
 
 window.changeAttendanceDate = function() {
