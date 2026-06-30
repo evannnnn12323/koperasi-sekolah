@@ -280,7 +280,29 @@ function switchAdminTab(tabName) {
     document.querySelectorAll('#view-admin .dashboard-page').forEach(page => {
         page.classList.remove('active');
     });
-    document.getElementById(`admin-page-${tabName}`).classList.add('active');
+    const pageEl = document.getElementById(`admin-page-${tabName}`);
+    if (pageEl) pageEl.classList.add('active');
+
+    // Update header title text dynamically
+    const titleMap = {
+        'dashboard': 'Panel Dashboard Utama',
+        'users': 'Manajemen Akun Pengguna',
+        'students': 'Database Biodata Siswa',
+        'attendance': 'Input Absensi Harian Siswa',
+        'petugas-attendance': 'Absensi Petugas Kopsis',
+        'products': 'Katalog & Stok Barang',
+        'pos': 'POS Kasir (Penjualan)',
+        'endofday': 'Laporan Akhir Hari',
+        'consignment': 'Sistem Barang Titipan Siswa (Konsinyasi)',
+        'reports': 'Laporan Keuangan',
+        'logs': 'Audit Log Aktivitas',
+        'settings': 'Pengaturan Sistem'
+    };
+    const headerTitle = document.getElementById('admin-header-title');
+    if (headerTitle && titleMap[tabName]) {
+        headerTitle.textContent = titleMap[tabName];
+    }
+
 
     // Run tab specific renders
     const renderMap = {

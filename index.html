@@ -1649,45 +1649,22 @@
     <script src="database.js"></script>
     <script src="app.js"></script>
 
-    <!-- PWA Service Worker Registration - Auto Update -->
+    <!-- Complete Cache & Service Worker Clear -->
     <script>
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', async () => {
-                try {
-                    // Unregister semua SW lama supaya selalu pakai versi terbaru
-                    const registrations = await navigator.serviceWorker.getRegistrations();
-                    for (const reg of registrations) {
-                        // Jika bukan sw.js terbaru, unregister
-                        if (reg.active && !reg.active.scriptURL.includes('sw.js')) {
-                            await reg.unregister();
-                        }
-                    }
-
-                    // Daftarkan SW terbaru
-                    const reg = await navigator.serviceWorker.register('./sw.js');
-
-                    // Jika ada update (SW baru menunggu), langsung aktifkan & reload
-                    reg.addEventListener('updatefound', () => {
-                        const newWorker = reg.installing;
-                        newWorker.addEventListener('statechange', () => {
-                            if (newWorker.state === 'activated') {
-                                // Reload otomatis saat SW baru aktif
-                                window.location.reload();
-                            }
-                        });
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                for (const registration of registrations) {
+                    registration.unregister().then(unregistered => {
+                        if (unregistered) console.log('Successfully unregistered service worker.');
                     });
-
-                    // Force update check setiap kali halaman dimuat
-                    reg.update();
-
-                } catch (err) {
-                    console.log('Service Worker error:', err);
                 }
             });
-
-            // Jika SW baru mengambil alih kontrol, reload otomatis
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                window.location.reload();
+        }
+        if ('caches' in window) {
+            caches.keys().then(names => {
+                for (const name of names) {
+                    caches.delete(name).then(() => console.log('Deleted cache:', name));
+                }
             });
         }
     </script>
