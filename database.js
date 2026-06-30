@@ -26,7 +26,7 @@ const DEFAULT_DATA = {
             username: "Yanuar",
             passwordHash: hashPassword("12345678"),
             role: "admin",
-            name: "Yanuar Pratama",
+            name: "Yanuar Evanto",
             jabatan: "Kepala Koperasi",
             photo: "",
             isActive: true
