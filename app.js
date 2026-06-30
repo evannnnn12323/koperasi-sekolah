@@ -695,21 +695,25 @@ function renderAttendanceTab() {
     const todayStr = new Date().toISOString().slice(0, 10);
     const isAdmin = state.currentUser && state.currentUser.role === 'admin';
 
-    const adminDateDiv  = document.getElementById('attendance-date-admin');
-    const lockedDateDiv = document.getElementById('attendance-date-locked');
-    const dateDisplay   = document.getElementById('attendance-date-display');
-    const dateInput     = document.getElementById('attendance-date-picker');
-    const clearBtn      = document.getElementById('btn-clear-attendance');
+    const adminDateDiv   = document.getElementById('attendance-date-admin');
+    const lockedDateDiv  = document.getElementById('attendance-date-locked');
+    const dateDisplay    = document.getElementById('attendance-date-display');
+    const dateInput      = document.getElementById('attendance-date-picker');
+    const clearBtn       = document.getElementById('btn-clear-attendance');
+    const statusBar      = document.getElementById('school-day-status-bar');
 
     if (isAdmin) {
         if (adminDateDiv)  adminDateDiv.style.display  = 'flex';
         if (lockedDateDiv) lockedDateDiv.style.display = 'none';
         if (clearBtn)      clearBtn.style.display      = 'inline-flex';
+        if (statusBar)     statusBar.style.display     = 'flex';
         if (dateInput && !dateInput.value) dateInput.value = todayStr;
+        updateSchoolDayStatusBar(dateInput ? dateInput.value : todayStr);
     } else {
         if (adminDateDiv)  adminDateDiv.style.display  = 'none';
         if (lockedDateDiv) lockedDateDiv.style.display = 'flex';
         if (clearBtn)      clearBtn.style.display      = 'none';
+        if (statusBar)     statusBar.style.display     = 'none';
         if (dateInput)     dateInput.value             = todayStr;
         if (dateDisplay) {
             const formatted = new Date(todayStr + 'T00:00:00').toLocaleDateString('id-ID', {
@@ -722,8 +726,39 @@ function renderAttendanceTab() {
     loadAttendanceForDate(isAdmin && dateInput ? dateInput.value : todayStr);
 }
 
+function updateSchoolDayStatusBar(date) {
+    const dayInfo = window.db.getDayStatus(date);
+    const badge   = document.getElementById('school-day-badge');
+    const reason  = document.getElementById('school-day-reason');
+    const input   = document.getElementById('school-day-reason-input');
+    if (!badge) return;
+    if (dayInfo.status === 'Libur') {
+        badge.textContent = '🔴 LIBUR';
+        badge.style.background = '#fee2e2';
+        badge.style.color = '#991b1b';
+    } else {
+        badge.textContent = '🟢 MASUK';
+        badge.style.background = '#d1fae5';
+        badge.style.color = '#065f46';
+    }
+    if (reason) reason.textContent = dayInfo.reason ? `"${dayInfo.reason}"` : '';
+    if (input)  input.value = dayInfo.reason || '';
+}
+
+window.setSchoolDayStatus = function(status) {
+    const dateInput = document.getElementById('attendance-date-picker');
+    const date = dateInput ? dateInput.value : new Date().toISOString().slice(0, 10);
+    const reason = (document.getElementById('school-day-reason-input') || {}).value || '';
+    if (!date) { showToast('Pilih tanggal terlebih dahulu.', 'error'); return; }
+    window.db.setDayStatus(date, status, reason);
+    updateSchoolDayStatusBar(date);
+    loadAttendanceForDate(date);
+    showToast(`Tanggal ${date} berhasil ditandai sebagai ${status}${reason ? ' (' + reason + ')' : ''}.`);
+};
+
 window.changeAttendanceDate = function() {
     const dateStr = document.getElementById('attendance-date-picker').value;
+    updateSchoolDayStatusBar(dateStr);
     loadAttendanceForDate(dateStr);
 };
 
@@ -732,7 +767,18 @@ function loadAttendanceForDate(dateStr) {
     const attendance = window.db.getAttendance().filter(a => a.date === dateStr);
     const tbody = document.getElementById('attendance-table-body');
     const isAdmin = state.currentUser && state.currentUser.role === 'admin';
+    const dayInfo = window.db.getDayStatus(dateStr);
 
+    // Jika hari LIBUR dan bukan admin → tampilkan pesan libur, jangan tampilkan form
+    if (dayInfo.status === 'Libur' && !isAdmin) {
+        tbody.innerHTML = `
+            <tr><td colspan="5" style="text-align:center; padding:2.5rem;">
+                <div style="font-size:2.5rem;">🏖️</div>
+                <div style="font-weight:700; font-size:1.1rem; color:var(--danger); margin-top:0.5rem;">Hari Libur — Koperasi Tutup</div>
+                <div style="font-size:0.9rem; color:var(--gray-500); margin-top:0.25rem;">${dayInfo.reason ? 'Keterangan: ' + dayInfo.reason : 'Absensi tidak dapat diisi pada hari libur.'}</div>
+            </td></tr>`;
+        return;
+    }
     tbody.innerHTML = students.map(s => {
         const record = attendance.find(a => a.studentId === s.id);
         const status = record ? record.status : 'Hadir';

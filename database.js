@@ -228,7 +228,8 @@ const DEFAULT_DATA = {
         }
     ],
     petugasAttendance: [],
-    petugasAttendanceRequests: []
+    petugasAttendanceRequests: [],
+    schoolCalendar: []
 };
 
 // Gaji per pertemuan (bisa diubah admin)
@@ -256,6 +257,10 @@ class KoperasiDB {
 
         if (!data.petugasAttendanceRequests) {
             data.petugasAttendanceRequests = [];
+            changed = true;
+        }
+        if (!data.schoolCalendar) {
+            data.schoolCalendar = [];
             changed = true;
         }
 
@@ -494,6 +499,32 @@ class KoperasiDB {
         this.saveData(data);
         this.addAuditLog("admin", "admin", "Hapus Semua Absensi", `Menghapus ${count} data absensi tanggal ${date}`);
         return { success: true, count };
+    }
+
+    // SCHOOL CALENDAR (Masuk / Libur)
+    getSchoolCalendar() {
+        return this.getData().schoolCalendar || [];
+    }
+
+    getDayStatus(date) {
+        const cal = this.getSchoolCalendar();
+        const entry = cal.find(e => e.date === date);
+        return entry || { date, status: 'Masuk', reason: '' };
+    }
+
+    setDayStatus(date, status, reason = '') {
+        const data = this.getData();
+        if (!data.schoolCalendar) data.schoolCalendar = [];
+        const idx = data.schoolCalendar.findIndex(e => e.date === date);
+        const entry = { date, status, reason };
+        if (idx !== -1) {
+            data.schoolCalendar[idx] = entry;
+        } else {
+            data.schoolCalendar.push(entry);
+        }
+        this.saveData(data);
+        this.addAuditLog("admin", "admin", "Set Status Hari", `Tanggal ${date} ditandai: ${status}${reason ? ' (' + reason + ')' : ''}`);
+        return { success: true };
     }
 
     getStudentAttendanceStats(studentId) {
