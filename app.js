@@ -208,22 +208,21 @@ function renderHeaderProfile() {
             }
         });
     }
-        // Update sidebar label
-        const sidebarLabel = document.getElementById('sidebar-role-label');
-        if (sidebarLabel) sidebarLabel.textContent = user.role === 'petugas_inti' ? 'Panel Petugas Inti' : (user.role === 'anggota' ? 'Panel Anggota' : 'Panel Petugas');
-    } else {
-        // Tampilkan semua menu untuk admin
-        document.querySelectorAll('#view-admin .sidebar-item').forEach(item => {
-            item.style.display = '';
-        });
-        // Tampilkan semua menu-category juga
-        document.querySelectorAll('#view-admin .menu-category').forEach(cat => {
-            cat.style.display = '';
-        });
-        const sidebarLabel = document.getElementById('sidebar-role-label');
-        if (sidebarLabel) sidebarLabel.textContent = 'Panel Admin';
+    // Update sidebar label
+    const sidebarLabel = document.getElementById('sidebar-role-label');
+    if (sidebarLabel) {
+        if (user.role === 'admin') {
+            sidebarLabel.textContent = 'Panel Admin';
+        } else if (user.role === 'petugas_inti') {
+            sidebarLabel.textContent = 'Panel Petugas Inti';
+        } else if (user.role === 'anggota') {
+            sidebarLabel.textContent = 'Panel Anggota';
+        } else {
+            sidebarLabel.textContent = 'Panel Petugas';
+        }
     }
 }
+
 
 // Sidebars Navigation
 function setupNavigation() {
