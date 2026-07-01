@@ -165,6 +165,11 @@
                     </a>
                 </li>
                 <li class="sidebar-item">
+                    <a class="sidebar-link" data-tab="shift-sales">
+                        <i data-lucide="file-spreadsheet"></i> Input Jualan Shift
+                    </a>
+                </li>
+                <li class="sidebar-item">
                     <a class="sidebar-link" data-tab="consignment">
                         <i data-lucide="badge-percent"></i> Barang Siswa
                     </a>
@@ -391,7 +396,59 @@
                                 <span id="pos-cart-total">Rp 0</span>
                             </div>
                             
-                            <button class="btn-checkout" onclick="processPOSCheckout()">Bayar & Cetak Nota</button>
+                            <button class="btn-checkout" onclick="processPOSCheckout()">Bayar & Simpan Transaksi</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUB-PAGE: SHIFT SALES MANUAL INPUT -->
+            <div id="admin-page-shift-sales" class="dashboard-page">
+                <div class="card" style="max-width: 900px; margin: 0 auto;">
+                    <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3>Input Jualan per Shift</h3>
+                        <div style="font-size:0.85rem; color:var(--text-secondary);">Masukkan total produk yang terjual pada shift istirahat</div>
+                    </div>
+                    <div class="card-body">
+                        <!-- Top Controls: Date and Shift selection -->
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:2rem; background:var(--gray-50); padding:1.25rem; border-radius:8px; border:1px solid var(--gray-200);">
+                            <div class="form-group" style="margin:0;">
+                                <label class="form-label" for="shift-sales-date">Tanggal Penjualan</label>
+                                <input type="date" id="shift-sales-date" class="form-input" style="padding-left:1rem;">
+                                <small id="shift-sales-date-lock-msg" style="display:none; color:var(--warning-dark); font-size:0.75rem; margin-top:4px;">* Tanggal dikunci oleh sistem</small>
+                            </div>
+                            <div class="form-group" style="margin:0;">
+                                <label class="form-label" for="shift-sales-select">Shift Istirahat</label>
+                                <select id="shift-sales-select" class="form-input" style="padding-left:1rem;">
+                                    <option value="Shift 1">Shift 1 (Istirahat Pertama)</option>
+                                    <option value="Shift 2">Shift 2 (Istirahat Kedua)</option>
+                                    <option value="Shift 3">Shift 3 (Istirahat Ketiga)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Product sales list table -->
+                        <div class="table-responsive">
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th>Kode</th>
+                                        <th>Nama Barang</th>
+                                        <th>Kategori</th>
+                                        <th>Stok Tersedia</th>
+                                        <th>Harga Satuan</th>
+                                        <th style="width: 150px; text-align: center;">Jumlah Terjual</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="shift-sales-product-body">
+                                    <!-- Dynamic rows from app.js -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem; border-top: 1px solid var(--gray-100); padding-top: 1.5rem;">
+                            <button class="btn-secondary" onclick="resetShiftSalesForm()"><i data-lucide="rotate-ccw"></i> Reset</button>
+                            <button class="btn-primary" onclick="submitShiftSalesForm()"><i data-lucide="save"></i> Simpan Penjualan Shift</button>
                         </div>
                     </div>
                 </div>
@@ -453,6 +510,7 @@
                                     <th>Keuntungan Kop</th>
                                     <th>Tanggal & Waktu Penjualan</th>
                                     <th>ID Transaksi</th>
+                                    <th>Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="cons-sales-table-body">
@@ -1500,9 +1558,8 @@
                     <!-- Nota content loaded here dynamically -->
                 </div>
             </div>
-            <div class="modal-footer" style="justify-content:space-between;">
-                <button class="btn-secondary" onclick="closeModal('modal-invoice')">Batal</button>
-                <button class="btn-primary" onclick="printInvoice()"><i data-lucide="printer"></i> Cetak</button>
+            <div class="modal-footer">
+                <button class="btn-primary" style="width:100%; justify-content:center; padding: 0.75rem;" onclick="closeModal('modal-invoice')">Selesai (Tutup)</button>
             </div>
         </div>
     </div>

@@ -670,6 +670,95 @@ class KoperasiDB {
         return { success: true, transaction: newTx };
     }
 
+    createShiftTransaction(dateStr, shiftName, items, cashierUsername) {
+        const data = this.getData();
+        if (!data.transactions) data.transactions = [];
+        if (!data.consignmentSales) data.consignmentSales = [];
+        
+        let totalAmount = 0;
+        let totalProfit = 0;
+        const transactionItems = [];
+        
+        // Validate stock first
+        for (const item of items) {
+            const product = data.products.find(p => p.id === item.productId);
+            if (!product) return { success: false, message: `Barang dengan ID ${item.productId} tidak ditemukan.` };
+            if (product.stock < item.quantity) {
+                return { success: false, message: `Stok tidak mencukupi untuk barang: ${product.name}.` };
+            }
+        }
+        
+        // Deduct stock and process
+        for (const item of items) {
+            const product = data.products.find(p => p.id === item.productId);
+            product.stock -= item.quantity;
+            
+            // Consignment integration
+            if (product.isConsigned) {
+                const consignment = data.consignments.find(c => c.id === product.consignmentId);
+                if (consignment) {
+                    consignment.soldQty = (consignment.soldQty || 0) + item.quantity;
+                    
+                    // Log consignment sale
+                    data.consignmentSales.push({
+                        id: "CS-" + (data.consignmentSales.length + 1),
+                        consignmentId: consignment.id,
+                        productId: product.id,
+                        productName: product.name,
+                        studentId: consignment.studentId,
+                        studentName: consignment.studentName,
+                        quantity: item.quantity,
+                        sellingPrice: product.price,
+                        costPrice: product.costPrice,
+                        earnings: item.quantity * product.costPrice,
+                        coopProfit: item.quantity * (product.price - product.costPrice),
+                        date: new Date(dateStr + 'T12:00:00').toISOString(),
+                        transactionId: "TX-SHIFT-" + Date.now()
+                    });
+                }
+            }
+            
+            const lineTotal = product.price * item.quantity;
+            const lineCost = product.costPrice * item.quantity;
+            const lineProfit = lineTotal - lineCost;
+            
+            totalAmount += lineTotal;
+            totalProfit += lineProfit;
+            
+            transactionItems.push({
+                productId: product.id,
+                name: product.name,
+                price: product.price,
+                costPrice: product.costPrice,
+                quantity: item.quantity,
+                total: lineTotal
+            });
+        }
+        
+        const txId = "TX-" + Date.now();
+        const newTransaction = {
+            id: txId,
+            date: new Date(dateStr + 'T12:00:00').toISOString(),
+            shift: shiftName,
+            cashier: cashierUsername,
+            studentId: null,
+            studentName: "Umum/Tamu",
+            items: transactionItems,
+            totalAmount,
+            totalProfit,
+            cashierUsername
+        };
+        
+        data.transactions.push(newTransaction);
+        this.saveData(data);
+        
+        this.addAuditLog(cashierUsername, "petugas", "Penjualan Shift", 
+            `Input manual penjualan ${shiftName} pada ${dateStr} sebesar Rp ${totalAmount.toLocaleString('id-ID')} berhasil disimpan`);
+            
+        return { success: true, transaction: newTransaction };
+    }
+
+
     // AUDIT LOGS
     getAuditLogs() {
         return this.getData().auditLogs;
@@ -796,6 +885,30 @@ class KoperasiDB {
         if (!data.consignmentSales) data.consignmentSales = [];
         return data.consignmentSales;
     }
+
+    deleteConsignmentSale(saleId) {
+        const data = this.getData();
+        if (!data.consignmentSales) data.consignmentSales = [];
+        
+        const idx = data.consignmentSales.findIndex(s => s.id === saleId);
+        if (idx === -1) return { success: false, message: "Riwayat penjualan tidak ditemukan." };
+        
+        const sale = data.consignmentSales[idx];
+        
+        // Cari barang titipan aktif terkait dan kurangi jumlah terjualnya
+        const consignment = data.consignments.find(c => c.id === sale.consignmentId);
+        if (consignment) {
+            consignment.soldQty = Math.max(0, (consignment.soldQty || 0) - sale.quantity);
+        }
+        
+        // Hapus penjualan dari array
+        data.consignmentSales.splice(idx, 1);
+        
+        this.saveData(data);
+        this.addAuditLog("Yanuar", "admin", "Hapus Penjualan Titipan", `Menghapus riwayat penjualan barang titipan ${sale.productName} (Sale ID: ${saleId})`);
+        return { success: true };
+    }
+
 
     getConsignmentPayouts() {
         const data = this.getData();

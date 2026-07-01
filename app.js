@@ -169,7 +169,7 @@ function renderHeaderProfile() {
 
     // Tampilkan/sembunyikan menu sidebar sesuai hak akses petugas
     if (user.role === 'petugas' || user.role === 'petugas_inti' || user.role === 'anggota') {
-        const allowed = ['pos', 'products', 'students', 'attendance', 'petugas-attendance', 'consignment'];
+        const allowed = ['pos', 'shift-sales', 'products', 'students', 'attendance', 'petugas-attendance', 'consignment'];
         if (user.role === 'petugas_inti') allowed.push('endofday');
         document.querySelectorAll('#view-admin .sidebar-item').forEach(item => {
             const link = item.querySelector('.sidebar-link[data-tab]');
@@ -242,7 +242,7 @@ function switchAdminTab(tabName) {
     // Petugas tidak boleh mengakses tab admin-only
     const user = state.currentUser;
     const isPetugas = user && (user.role === 'petugas' || user.role === 'petugas_inti' || user.role === 'anggota');
-    const petugasAllowed = ['pos', 'products', 'students', 'attendance', 'petugas-attendance', 'consignment'];
+    const petugasAllowed = ['pos', 'shift-sales', 'products', 'students', 'attendance', 'petugas-attendance', 'consignment'];
     if (user && user.role === 'petugas_inti') petugasAllowed.push('endofday');
     
     if (isPetugas && !petugasAllowed.includes(tabName)) {
@@ -292,6 +292,7 @@ function switchAdminTab(tabName) {
         'petugas-attendance': 'Absensi Petugas Kopsis',
         'products': 'Katalog & Stok Barang',
         'pos': 'POS Kasir (Penjualan)',
+        'shift-sales': 'Input Jualan Shift',
         'endofday': 'Laporan Akhir Hari',
         'consignment': 'Sistem Barang Titipan Siswa (Konsinyasi)',
         'reports': 'Laporan Keuangan',
@@ -314,6 +315,7 @@ function switchAdminTab(tabName) {
         'petugas-attendance': renderPetugasAttendanceTab,
         'products': renderProductsTab,
         'pos': renderPOSTab,
+        'shift-sales': renderShiftSales,
         'endofday': renderEndOfDayTab,
         'consignment': renderConsignmentTab,
         'reports': renderReportsTab,
@@ -1950,8 +1952,9 @@ function renderConsignmentList() {
 function renderConsignmentSales() {
     const sales = window.db.getConsignmentSales();
     const tbody = document.getElementById('cons-sales-table-body');
+    const isAdmin = state.currentUser && state.currentUser.role === 'admin';
     if (sales.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--gray-500);">Belum ada riwayat penjualan barang titipan.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:var(--gray-500);">Belum ada riwayat penjualan barang titipan.</td></tr>';
         return;
     }
     tbody.innerHTML = [...sales].reverse().map(s => `
@@ -1965,9 +1968,29 @@ function renderConsignmentSales() {
             <td>Rp ${s.coopProfit.toLocaleString('id-ID')}</td>
             <td><small>${new Date(s.date).toLocaleString('id-ID')}</small></td>
             <td><code>${s.transactionId || 'Manual'}</code></td>
+            <td>
+                ${isAdmin ? `
+                    <button class="btn-danger" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="deleteConsignmentSaleRow('${s.id}')" title="Hapus riwayat penjualan ini">
+                        <i data-lucide="trash-2" style="width:12px;height:12px;vertical-align:middle;"></i> Hapus
+                    </button>
+                ` : '-'}
+            </td>
         </tr>
     `).join('');
+    safeCreateIcons();
 }
+
+window.deleteConsignmentSaleRow = function(saleId) {
+    if (!confirm("Apakah Anda yakin ingin menghapus catatan riwayat penjualan barang titipan ini? Jumlah terjual penitip akan disesuaikan secara otomatis.")) return;
+    const res = window.db.deleteConsignmentSale(saleId);
+    if (res.success) {
+        showToast("Catatan riwayat penjualan titipan berhasil dihapus!");
+        renderConsignmentSales();
+    } else {
+        showToast(res.message || "Gagal menghapus.", "error");
+    }
+};
+
 
 function renderConsignmentPayouts() {
     const consignments = window.db.getConsignments();
@@ -3178,4 +3201,109 @@ window.submitEndOfDayReport = function() {
     
     showToast('Laporan akhir hari telah diserahkan dan dicatat di sistem.', 'success');
 };
+
+// ================= SHIFT SALES MANUAL INPUT TAB =================
+window.renderShiftSales = function() {
+    const products = window.db.getProducts();
+    const tbody = document.getElementById('shift-sales-product-body');
+    const dateInput = document.getElementById('shift-sales-date');
+    const lockMsg = document.getElementById('shift-sales-date-lock-msg');
+    
+    // Set default date to local today
+    const todayStr = getLocalDateString();
+    if (dateInput) {
+        dateInput.value = todayStr;
+        // Lock date for non-admin
+        const isAdmin = state.currentUser && state.currentUser.role === 'admin';
+        if (isAdmin) {
+            dateInput.disabled = false;
+            if (lockMsg) lockMsg.style.display = 'none';
+        } else {
+            dateInput.disabled = true;
+            if (lockMsg) lockMsg.style.display = 'inline-block';
+        }
+    }
+
+    if (products.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--gray-500);">Tidak ada produk di katalog.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = products.map(p => `
+        <tr>
+            <td><code>${p.id}</code></td>
+            <td><strong>${p.name}</strong> ${p.isConsigned ? '<span class="badge present" style="font-size:0.7rem; padding:0.1rem 0.3rem; margin-left:4px; background:#dbeafe; color:#1e40af;">Titipan</span>' : ''}</td>
+            <td>${p.category}</td>
+            <td id="shift-sales-stock-${p.id}" style="font-weight:600;">${p.stock}</td>
+            <td>Rp ${p.price.toLocaleString('id-ID')}</td>
+            <td>
+                <input type="number" class="form-input shift-sales-input" 
+                       data-product-id="${p.id}" 
+                       min="0" 
+                       max="${p.stock}" 
+                       placeholder="0" 
+                       style="text-align:center; padding:0.35rem; width:100px; margin: 0 auto; display:block;">
+            </td>
+        </tr>
+     `).join('');
+};
+
+window.resetShiftSalesForm = function() {
+    document.querySelectorAll('.shift-sales-input').forEach(input => {
+        input.value = '';
+    });
+    showToast("Form input jualan shift berhasil dikosongkan.");
+};
+
+window.submitShiftSalesForm = function() {
+    const dateStr = document.getElementById('shift-sales-date').value;
+    const shiftName = document.getElementById('shift-sales-select').value;
+    
+    if (!dateStr) {
+        showToast("Pilih tanggal terlebih dahulu.", "error");
+        return;
+    }
+
+    const items = [];
+    let hasError = false;
+    let errorMsg = "";
+
+    document.querySelectorAll('.shift-sales-input').forEach(input => {
+        const productId = input.getAttribute('data-product-id');
+        const quantity = parseInt(input.value) || 0;
+        
+        if (quantity > 0) {
+            const maxStock = parseInt(input.getAttribute('max')) || 0;
+            if (quantity > maxStock) {
+                hasError = true;
+                errorMsg = `Jumlah input untuk barang dengan ID ${productId} melebihi stok yang tersedia!`;
+            }
+            items.push({ productId, quantity });
+        }
+    });
+
+    if (hasError) {
+        showToast(errorMsg, "error");
+        return;
+    }
+
+    if (items.length === 0) {
+        showToast("Masukkan setidaknya 1 jumlah barang yang terjual!", "error");
+        return;
+    }
+
+    if (!confirm(`Simpan laporan penjualan manual untuk ${shiftName} pada tanggal ${dateStr}?`)) {
+        return;
+    }
+
+    const res = window.db.createShiftTransaction(dateStr, shiftName, items, state.currentUser.username);
+    if (res.success) {
+        showToast(`Laporan jualan ${shiftName} berhasil disimpan ke sistem!`);
+        // Refresh the form
+        renderShiftSales();
+    } else {
+        showToast(res.message || "Gagal menyimpan laporan.", "error");
+    }
+};
+
 
