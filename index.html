@@ -174,6 +174,11 @@
                         <i data-lucide="badge-percent"></i> Barang Siswa
                     </a>
                 </li>
+                <li class="sidebar-item">
+                    <a class="sidebar-link" data-tab="petugas-consignment">
+                        <i data-lucide="badge-percent"></i> Titipan Saya
+                    </a>
+                </li>
                 
                 <li class="menu-category">Manajemen Data</li>
                 <li class="sidebar-item">
@@ -450,6 +455,115 @@
                             <button class="btn-secondary" onclick="resetShiftSalesForm()"><i data-lucide="rotate-ccw"></i> Reset</button>
                             <button class="btn-primary" onclick="submitShiftSalesForm()"><i data-lucide="save"></i> Simpan Penjualan Shift</button>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUB-PAGE: PERSONAL CONSIGNMENT (PETUGAS / STAFF) -->
+            <div id="admin-page-petugas-consignment" class="dashboard-page">
+                <div style="border-bottom:1.5px solid var(--gray-100); padding-bottom: 0.75rem; margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <h2 style="font-weight:700; margin:0;">Titipan Saya</h2>
+                        <p style="color:var(--gray-500); font-size:0.9rem; margin: 4px 0 0 0;">Kelola barang titipan jualan milik Anda sendiri di Koperasi.</p>
+                    </div>
+                    <button class="btn-primary" onclick="openAddSiswaConsignmentModal()"><i data-lucide="plus"></i> Ajukan Titip Barang Jualan</button>
+                </div>
+                
+                <!-- SUMMARY WIDGETS -->
+                <div class="stats-grid" style="margin-bottom: 2rem;">
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <h4>Total Barang Dititipkan</h4>
+                            <p id="petugas-cons-total-qty">0 unit</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <h4>Total Unit Terjual</h4>
+                            <p id="petugas-cons-sold-qty" style="color:var(--success-dark);">0 unit</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <h4>Total Pendapatan Kotor</h4>
+                            <p id="petugas-cons-total-earnings">Rp 0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <h4>Bagi Hasil Belum Diambil</h4>
+                            <p id="petugas-cons-unpaid" style="color:var(--primary-dark);">Rp 0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-columns" style="gap:1.5rem;">
+                    <!-- Left: active consignments list -->
+                    <div class="dashboard-column-card" style="flex:2;">
+                        <h3>Daftar Barang Titipan Aktif Anda</h3>
+                        <div class="table-responsive" style="margin-top:1rem;">
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nama Barang</th>
+                                        <th>Kategori</th>
+                                        <th>Bagian Siswa</th>
+                                        <th>Harga Jual</th>
+                                        <th>Total Titip</th>
+                                        <th>Terjual</th>
+                                        <th>Sisa Stok</th>
+                                        <th>Tanggal Masuk</th>
+                                        <th>Status Bayar</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="petugas-cons-list-body">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Right: sales log -->
+                    <div class="dashboard-column-card" style="flex:1;">
+                        <h3>Log Penjualan Terakhir</h3>
+                        <div class="table-responsive" style="margin-top:1rem;">
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th>Waktu</th>
+                                        <th>Nama Barang</th>
+                                        <th>Jumlah</th>
+                                        <th>Pendapatan</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="petugas-cons-sales-body">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Personal requests queue -->
+                <div class="dashboard-column-card" style="margin-top:2rem;">
+                    <h3>Riwayat Pengajuan Titipan Baru</h3>
+                    <div class="table-responsive" style="margin-top:1rem;">
+                        <table class="custom-table">
+                            <thead>
+                                <tr>
+                                    <th>Tanggal Pengajuan</th>
+                                    <th>Nama Barang</th>
+                                    <th>Kategori</th>
+                                    <th>Harga Diajukan (Bagian Siswa)</th>
+                                    <th>Jumlah Unit</th>
+                                    <th>Status</th>
+                                    <th>Keterangan / Catatan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="petugas-cons-requests-body">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>

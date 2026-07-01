@@ -167,41 +167,47 @@ function renderHeaderProfile() {
     
     avatarElements.forEach(el => el.setAttribute('src', avatarUrl));
 
-    // Tampilkan/sembunyikan menu sidebar sesuai hak akses petugas
-    if (user.role === 'petugas' || user.role === 'petugas_inti' || user.role === 'anggota') {
-        const allowed = ['pos', 'shift-sales', 'products', 'students', 'attendance', 'petugas-attendance', 'consignment'];
-        if (user.role === 'petugas_inti') allowed.push('endofday');
-        document.querySelectorAll('#view-admin .sidebar-item').forEach(item => {
-            const link = item.querySelector('.sidebar-link[data-tab]');
-            if (link) {
-                const tab = link.getAttribute('data-tab');
-                if (allowed.includes(tab)) {
-                    item.style.display = '';
-                } else {
-                    item.style.display = 'none';
+    // Tampilkan/sembunyikan menu sidebar sesuai hak akses petugas vs admin
+    const isAdmin = user.role === 'admin';
+    const allowed = isAdmin 
+        ? ['dashboard', 'pos', 'shift-sales', 'consignment', 'products', 'students', 'attendance', 'petugas-attendance', 'users', 'endofday', 'reports', 'logs', 'about', 'settings']
+        : ['pos', 'shift-sales', 'petugas-consignment', 'products', 'students', 'attendance', 'petugas-attendance', 'about'];
+    
+    if (!isAdmin && user.role === 'petugas_inti') {
+        allowed.push('endofday');
+    }
+
+    document.querySelectorAll('#view-admin .sidebar-item').forEach(item => {
+        const link = item.querySelector('.sidebar-link[data-tab]');
+        if (link) {
+            const tab = link.getAttribute('data-tab');
+            if (allowed.includes(tab)) {
+                item.style.display = '';
+            } else {
+                item.style.display = 'none';
+            }
+        }
+    });
+
+    // Sembunyikan menu-category yang tidak diperlukan petugas
+    const sidebarMenu = document.querySelector('#view-admin .sidebar-menu');
+    if (sidebarMenu) {
+        const allItems = Array.from(sidebarMenu.children);
+        allItems.forEach((li, idx) => {
+            if (li.classList.contains('menu-category')) {
+                // Cek apakah ada minimal 1 sidebar-item yang tampil setelah kategori ini
+                let hasVisibleChild = false;
+                for (let i = idx + 1; i < allItems.length; i++) {
+                    if (allItems[i].classList.contains('menu-category')) break;
+                    if (allItems[i].classList.contains('sidebar-item') && allItems[i].style.display !== 'none') {
+                        hasVisibleChild = true;
+                        break;
+                    }
                 }
+                li.style.display = hasVisibleChild ? '' : 'none';
             }
         });
-        // Sembunyikan menu-category yang tidak diperlukan petugas
-        // Kategori "Laporan & Audit" hanya untuk petugas_inti dan admin
-        const sidebarMenu = document.querySelector('#view-admin .sidebar-menu');
-        if (sidebarMenu) {
-            const allItems = Array.from(sidebarMenu.children);
-            allItems.forEach((li, idx) => {
-                if (li.classList.contains('menu-category')) {
-                    // Cek apakah ada minimal 1 sidebar-item yang tampil setelah kategori ini
-                    let hasVisibleChild = false;
-                    for (let i = idx + 1; i < allItems.length; i++) {
-                        if (allItems[i].classList.contains('menu-category')) break;
-                        if (allItems[i].classList.contains('sidebar-item') && allItems[i].style.display !== 'none') {
-                            hasVisibleChild = true;
-                            break;
-                        }
-                    }
-                    li.style.display = hasVisibleChild ? '' : 'none';
-                }
-            });
-        }
+    }
         // Update sidebar label
         const sidebarLabel = document.getElementById('sidebar-role-label');
         if (sidebarLabel) sidebarLabel.textContent = user.role === 'petugas_inti' ? 'Panel Petugas Inti' : (user.role === 'anggota' ? 'Panel Anggota' : 'Panel Petugas');
@@ -242,7 +248,7 @@ function switchAdminTab(tabName) {
     // Petugas tidak boleh mengakses tab admin-only
     const user = state.currentUser;
     const isPetugas = user && (user.role === 'petugas' || user.role === 'petugas_inti' || user.role === 'anggota');
-    const petugasAllowed = ['pos', 'shift-sales', 'products', 'students', 'attendance', 'petugas-attendance', 'consignment'];
+    const petugasAllowed = ['pos', 'shift-sales', 'petugas-consignment', 'products', 'students', 'attendance', 'petugas-attendance', 'about'];
     if (user && user.role === 'petugas_inti') petugasAllowed.push('endofday');
     
     if (isPetugas && !petugasAllowed.includes(tabName)) {
@@ -316,6 +322,7 @@ function switchAdminTab(tabName) {
         'products': renderProductsTab,
         'pos': renderPOSTab,
         'shift-sales': renderShiftSales,
+        'petugas-consignment': renderPetugasConsignment,
         'endofday': renderEndOfDayTab,
         'consignment': renderConsignmentTab,
         'reports': renderReportsTab,
@@ -2323,7 +2330,7 @@ window.saveSiswaConsignmentForm = function() {
     
     const user = state.currentUser;
     const res = window.db.addConsignmentRequest({
-        studentId: user.studentId,
+        studentId: user.studentId || user.username,
         studentName: user.name,
         productName,
         category,
@@ -2335,7 +2342,11 @@ window.saveSiswaConsignmentForm = function() {
     if (res.success) {
         showToast("Pengajuan berhasil dikirim! Menunggu persetujuan admin.");
         closeModal('modal-siswa-consignment');
-        renderSiswaConsignment();
+        if (state.activeView === 'admin') {
+            renderPetugasConsignment();
+        } else {
+            renderSiswaConsignment();
+        }
     } else {
         showToast(res.message || "Gagal mengirim pengajuan.", "error");
     }
@@ -3305,5 +3316,114 @@ window.submitShiftSalesForm = function() {
         showToast(res.message || "Gagal menyimpan laporan.", "error");
     }
 };
+
+window.renderPetugasConsignment = function() {
+    const studentId = state.currentUser.studentId || state.currentUser.username;
+    const consignments = window.db.getConsignments().filter(c => c.studentId === studentId);
+    const sales = window.db.getConsignmentSales().filter(s => s.studentId === studentId);
+    const payouts = window.db.getConsignmentPayouts().filter(p => p.studentId === studentId);
+
+    // Calculate summaries
+    let totalQty = 0;
+    let totalSold = 0;
+    let totalEarned = 0;
+    let totalPaid = payouts.reduce((sum, p) => sum + p.amount, 0);
+
+    consignments.forEach(c => {
+        totalQty += c.consignedQty;
+        totalSold += c.soldQty;
+        totalEarned += c.soldQty * c.costPrice;
+    });
+
+    const unpaid = totalEarned - totalPaid;
+
+    const totalQtyEl = document.getElementById('petugas-cons-total-qty');
+    if (totalQtyEl) totalQtyEl.textContent = `${totalQty} unit`;
+    const soldQtyEl = document.getElementById('petugas-cons-sold-qty');
+    if (soldQtyEl) soldQtyEl.textContent = `${totalSold} unit`;
+    const earningsEl = document.getElementById('petugas-cons-total-earnings');
+    if (earningsEl) earningsEl.textContent = `Rp ${totalEarned.toLocaleString('id-ID')}`;
+    const unpaidEl = document.getElementById('petugas-cons-unpaid');
+    if (unpaidEl) unpaidEl.textContent = `Rp ${unpaid.toLocaleString('id-ID')}`;
+
+    // Render list table
+    const tbodyList = document.getElementById('petugas-cons-list-body');
+    if (tbodyList) {
+        if (consignments.length === 0) {
+            tbodyList.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--gray-500);">Anda belum menitipkan barang jualan.</td></tr>';
+        } else {
+            tbodyList.innerHTML = consignments.map(c => {
+                const remaining = c.consignedQty - c.soldQty;
+                const payoutBadgeClass = c.payoutStatus === 'Lunas' ? 'present' : 'permission';
+                return `
+                    <tr>
+                        <td><strong>${c.productName}</strong></td>
+                        <td>${c.category}</td>
+                        <td>Rp ${c.costPrice.toLocaleString('id-ID')}</td>
+                        <td>Rp ${c.sellingPrice.toLocaleString('id-ID')}</td>
+                        <td>${c.consignedQty} unit</td>
+                        <td style="color:var(--success); font-weight:700;">${c.soldQty} unit</td>
+                        <td style="font-weight:700;">${remaining} unit</td>
+                        <td><small>${new Date(c.consignmentDate).toLocaleDateString('id-ID')}</small></td>
+                        <td><span class="badge ${payoutBadgeClass}">${c.payoutStatus}</span></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    }
+
+    // Render sales log table
+    const tbodySales = document.getElementById('petugas-cons-sales-body');
+    if (tbodySales) {
+        if (sales.length === 0) {
+            tbodySales.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--gray-500);">Belum ada riwayat penjualan.</td></tr>';
+        } else {
+            tbodySales.innerHTML = [...sales].reverse().map(s => `
+                <tr>
+                    <td><small>${new Date(s.date).toLocaleString('id-ID')}</small></td>
+                    <td>${s.productName}</td>
+                    <td>${s.quantity} unit</td>
+                    <td style="color:var(--success); font-weight:700;">Rp ${s.earnings.toLocaleString('id-ID')}</td>
+                </tr>
+            `).join('');
+        }
+    }
+
+    // Render consignment requests table
+    const reqs = window.db.getConsignmentRequests().filter(r => r.studentId === studentId);
+    const tbodyReqs = document.getElementById('petugas-cons-requests-body');
+    if (tbodyReqs) {
+        if (reqs.length === 0) {
+            tbodyReqs.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--gray-500);">Belum ada riwayat pengajuan barang titipan.</td></tr>';
+        } else {
+            tbodyReqs.innerHTML = reqs.map(r => {
+                const dateStr = new Date(r.date).toLocaleDateString('id-ID', {
+                    day: '2-digit', month: 'short', year: 'numeric'
+                });
+                let statusBadge = '';
+                if (r.status === 'Pending') statusBadge = '<span class="badge warning">Menunggu</span>';
+                else if (r.status === 'Approved') statusBadge = '<span class="badge present">Disetujui</span>';
+                else if (r.status === 'Rejected') statusBadge = '<span class="badge absent">Ditolak</span>';
+                
+                const detailText = r.status === 'Rejected' 
+                    ? `<span style="color:var(--danger-dark); font-weight:600;">Ditolak: ${r.rejectReason || '-'}</span>`
+                    : (r.notes || '-');
+    
+                return `
+                    <tr>
+                        <td><small>${dateStr}</small></td>
+                        <td><strong>${r.productName}</strong></td>
+                        <td>${r.category}</td>
+                        <td>Rp ${r.costPrice.toLocaleString('id-ID')}</td>
+                        <td>${r.consignedQty} unit</td>
+                        <td>${statusBadge}</td>
+                        <td><small>${detailText}</small></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    }
+};
+
 
 
